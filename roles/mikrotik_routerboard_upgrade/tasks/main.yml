@@ -21,8 +21,13 @@
   community.routeros.command:
     commands:
       - ':put [/system resource get version]'
-  register: ros_ver
+  register: ros_ver_tmp
   changed_when: false
+  when: rb_upgrade_needed | bool
+
+- name: Update RouterOS version after RouterBOARD upgrade
+  set_fact:
+    ros_ver: "{{ ros_ver_tmp }}"
   when: rb_upgrade_needed | bool
 
 - name: Final check RouterBOARD firmware
@@ -30,8 +35,13 @@
     commands:
       - ':put [/system routerboard get current-firmware]'
       - ':put [/system routerboard get upgrade-firmware]'
-  register: rb_fw
+  register: rb_fw_tmp
   changed_when: false
+  when: rb_upgrade_needed | bool
+
+- name: Update RouterBOARD firmware after upgrade
+  set_fact:
+    rb_fw: "{{ rb_fw_tmp }}"
   when: rb_upgrade_needed | bool
 
 - name: Print versions after RouterBOARD upgrade
