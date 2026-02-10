@@ -13,6 +13,10 @@
         below_7_12_1: "{{ (ros_ver.stdout[0] | trim) is version('7.12.1', '<') }}"
 
     # --- Phase 1: Upgrade to 7.12.1 if needed ---
+    - name: "===== Phase 1: Upgrade to RouterOS 7.12.1 ====="
+      debug:
+        msg: "Current version: {{ ros_ver.stdout[0] | trim }}, Upgrade needed: {{ below_7_12_1 }}"
+
     - name: "Phase 1: Upgrade RouterOS"
       include_role:
         name: mikrotik_routeros_upgrade
@@ -24,10 +28,22 @@
       when: below_7_12_1 | bool
 
     # --- Phase 2: Switch to LTS channel and upgrade to latest ---
+    - name: "===== Phase 2: Switch to LTS and upgrade ====="
+      debug:
+        msg: "Switching to long-term channel and upgrading to latest LTS version"
+
+    - name: Get current update channel
+      community.routeros.command:
+        commands:
+          - ':put [/system package update get channel]'
+      register: current_channel
+      changed_when: false
+
     - name: Switch update channel to long-term
       community.routeros.command:
         commands:
           - /system package update set channel=long-term
+      when: (current_channel.stdout[0] | trim) != 'long-term'
 
     - name: "Phase 2: Upgrade RouterOS to latest LTS"
       include_role:

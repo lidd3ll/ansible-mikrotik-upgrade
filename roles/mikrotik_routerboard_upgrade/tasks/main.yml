@@ -3,13 +3,17 @@
   set_fact:
     rb_upgrade_needed: "{{ (rb_fw.stdout[0] | trim) != (rb_fw.stdout[1] | trim) }}"
 
+- name: RouterBOARD upgrade decision
+  debug:
+    msg: "Current firmware: {{ rb_fw.stdout[0] | trim }}, Available: {{ rb_fw.stdout[1] | trim }}, Upgrade needed: {{ rb_upgrade_needed }}"
+
 - name: Upgrade RouterBOARD + reboot
   community.routeros.command:
     commands:
       - ':execute { /system routerboard upgrade }'
       - ':delay 5'
       - ':execute { /system reboot }'
-  ignore_errors: true
+  failed_when: false
   when: rb_upgrade_needed | bool
 
 - name: Wait after RouterBOARD reboot
@@ -17,7 +21,7 @@
     seconds: "{{ rb_wait_seconds }}"
   when: rb_upgrade_needed | bool
 
-- name: Final check RouterOS version
+- name: Verify RouterOS version
   community.routeros.command:
     commands:
       - ':put [/system resource get version]'
@@ -25,12 +29,12 @@
   changed_when: false
   when: rb_upgrade_needed | bool
 
-- name: Update RouterOS version after RouterBOARD upgrade
+- name: cache ros_ver
   set_fact:
     ros_ver: "{{ ros_ver_tmp }}"
   when: rb_upgrade_needed | bool
 
-- name: Final check RouterBOARD firmware
+- name: Verify RouterBOARD firmware
   community.routeros.command:
     commands:
       - ':put [/system routerboard get current-firmware]'
@@ -39,15 +43,15 @@
   changed_when: false
   when: rb_upgrade_needed | bool
 
-- name: Update RouterBOARD firmware after upgrade
+- name: cache rb_fw
   set_fact:
     rb_fw: "{{ rb_fw_tmp }}"
   when: rb_upgrade_needed | bool
 
-- name: Print versions after RouterBOARD upgrade
+- name: Versions after RouterBOARD upgrade
   debug:
     msg:
-      - "RouterOS version: {{ ros_ver.stdout[0] | trim }}"
-      - "RouterBOARD current-firmware: {{ rb_fw.stdout[0] | trim }}"
-      - "RouterBOARD upgrade-firmware: {{ rb_fw.stdout[1] | trim }}"
+      - "RouterOS: {{ ros_ver.stdout[0] | trim }}"
+      - "RouterBOARD current: {{ rb_fw.stdout[0] | trim }}"
+      - "RouterBOARD upgrade: {{ rb_fw.stdout[1] | trim }}"
   when: rb_upgrade_needed | bool
