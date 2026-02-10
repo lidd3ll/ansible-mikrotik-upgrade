@@ -1,0 +1,22 @@
+---
+- name: Get RouterOS version
+  community.routeros.command:
+    commands:
+      - ':put [/system resource get version]'
+  register: ros_ver
+  changed_when: false
+
+- name: Get RouterBOARD firmware (current + upgrade)
+  community.routeros.command:
+    commands:
+      - ':put [/system routerboard get current-firmware]'
+      - ':put [/system routerboard get upgrade-firmware]'
+  register: rb_fw
+  changed_when: false
+
+- name: Print current versions
+  debug:
+    msg:
+      - "RouterOS version: {{ ros_ver.stdout[0] | trim }}"
+      - "RouterBOARD current-firmware: {{ rb_fw.stdout[0] | trim }}"
+      - "RouterBOARD upgrade-firmware: {{ rb_fw.stdout[1] | trim }}"

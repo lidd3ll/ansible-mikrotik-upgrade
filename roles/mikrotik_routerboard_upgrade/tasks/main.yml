@@ -1,0 +1,43 @@
+---
+- name: Check if RouterBOARD needs an upgrade
+  set_fact:
+    rb_upgrade_needed: "{{ (rb_fw.stdout[0] | trim) != (rb_fw.stdout[1] | trim) }}"
+
+- name: Upgrade RouterBOARD + reboot
+  community.routeros.command:
+    commands:
+      - ':execute { /system routerboard upgrade }'
+      - ':delay 5'
+      - ':execute { /system reboot }'
+  ignore_errors: true
+  when: rb_upgrade_needed | bool
+
+- name: Wait after RouterBOARD reboot
+  pause:
+    seconds: "{{ rb_wait_seconds }}"
+  when: rb_upgrade_needed | bool
+
+- name: Final check RouterOS version
+  community.routeros.command:
+    commands:
+      - ':put [/system resource get version]'
+  register: ros_ver
+  changed_when: false
+  when: rb_upgrade_needed | bool
+
+- name: Final check RouterBOARD firmware
+  community.routeros.command:
+    commands:
+      - ':put [/system routerboard get current-firmware]'
+      - ':put [/system routerboard get upgrade-firmware]'
+  register: rb_fw
+  changed_when: false
+  when: rb_upgrade_needed | bool
+
+- name: Print versions after RouterBOARD upgrade
+  debug:
+    msg:
+      - "RouterOS version: {{ ros_ver.stdout[0] | trim }}"
+      - "RouterBOARD current-firmware: {{ rb_fw.stdout[0] | trim }}"
+      - "RouterBOARD upgrade-firmware: {{ rb_fw.stdout[1] | trim }}"
+  when: rb_upgrade_needed | bool

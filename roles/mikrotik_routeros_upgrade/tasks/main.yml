@@ -1,0 +1,54 @@
+---
+- name: Check for RouterOS updates
+  community.routeros.command:
+    commands:
+      - /system package update check-for-updates
+  changed_when: false
+
+- name: Get latest available RouterOS version
+  community.routeros.command:
+    commands:
+      - ':put [/system package update get latest-version]'
+  register: latest_ros_ver
+  changed_when: false
+
+- name: Determine if RouterOS upgrade is needed
+  set_fact:
+    ros_upgrade_needed: "{{ (ros_ver.stdout[0] | trim) is version(latest_ros_ver.stdout[0] | trim, '<') }}"
+
+- name: Install RouterOS update
+  community.routeros.command:
+    commands:
+      - /system package update install
+  ignore_errors: true
+  when: ros_upgrade_needed | bool
+
+- name: Wait after RouterOS upgrade
+  pause:
+    seconds: "{{ ros_wait_seconds }}"
+  when: ros_upgrade_needed | bool
+
+- name: Re-check RouterOS version after upgrade
+  community.routeros.command:
+    commands:
+      - ':put [/system resource get version]'
+  register: ros_ver
+  changed_when: false
+  when: ros_upgrade_needed | bool
+
+- name: Re-check RouterBOARD firmware after upgrade
+  community.routeros.command:
+    commands:
+      - ':put [/system routerboard get current-firmware]'
+      - ':put [/system routerboard get upgrade-firmware]'
+  register: rb_fw
+  changed_when: false
+  when: ros_upgrade_needed | bool
+
+- name: Print versions after RouterOS upgrade
+  debug:
+    msg:
+      - "RouterOS version (after upgrade): {{ ros_ver.stdout[0] | trim }}"
+      - "RouterBOARD current-firmware: {{ rb_fw.stdout[0] | trim }}"
+      - "RouterBOARD upgrade-firmware: {{ rb_fw.stdout[1] | trim }}"
+  when: ros_upgrade_needed | bool

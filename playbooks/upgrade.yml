@@ -1,0 +1,38 @@
+---
+- name: Upgrade Mikrotik devices
+  hosts: mikrotik
+  gather_facts: false
+
+  tasks:
+    - name: Gather Mikrotik facts
+      include_role:
+        name: mikrotik_facts
+
+    - name: Check if RouterOS is below 7.12.1
+      set_fact:
+        below_7_12_1: "{{ (ros_ver.stdout[0] | trim) is version('7.12.1', '<') }}"
+
+    # --- Phase 1: Upgrade to 7.12.1 if needed ---
+    - name: "Phase 1: Upgrade RouterOS"
+      include_role:
+        name: mikrotik_routeros_upgrade
+      when: below_7_12_1 | bool
+
+    - name: "Phase 1: Upgrade RouterBOARD firmware"
+      include_role:
+        name: mikrotik_routerboard_upgrade
+      when: below_7_12_1 | bool
+
+    # --- Phase 2: Switch to LTS channel and upgrade to latest ---
+    - name: Switch update channel to long-term
+      community.routeros.command:
+        commands:
+          - /system package update set channel=long-term
+
+    - name: "Phase 2: Upgrade RouterOS to latest LTS"
+      include_role:
+        name: mikrotik_routeros_upgrade
+
+    - name: "Phase 2: Upgrade RouterBOARD firmware"
+      include_role:
+        name: mikrotik_routerboard_upgrade
